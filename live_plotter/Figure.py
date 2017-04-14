@@ -16,7 +16,7 @@ class Graph(metaclass=ABCMeta):
         return self._name
 
     @abstractmethod
-    def draw(self, plotter, to_legend: bool):
+    def draw(self, plotter):
         pass
 
 
@@ -26,7 +26,6 @@ class Curve(Graph):
         self._mode = "-or" if mode is None else mode
         self._xes = []
         self._yes = []
-        self._legend = False
 
     def append(self, x: {float, Iterable[float]}, y: {float, Iterable[float]}):
         if not isinstance(x, Iterable):
@@ -38,11 +37,11 @@ class Curve(Graph):
         self._xes.extend(x)
         self._yes.extend(y)
 
-    def draw(self, plotter, to_legend: bool):
-        inst = plotter.plot(self._xes, self._yes, self._mode)
-        if not self._legend and to_legend:
-            plotter.legend([inst], [self.get_name()])
-            self._legend = True
+    def draw(self, plotter):
+        plotter.plot(self._xes, self._yes, self._mode)
+
+    def legend(self):
+        pass
 
 
 class FillGraph(Graph):
@@ -62,7 +61,6 @@ class FillGraph(Graph):
         self._yes = []
         self._deltas = []
         self._mode = "-or" if mode is None else mode
-        self._legend = False
 
     def append(
             self, x: Union[float, Iterable[float]], y: Union[float, Iterable[float]],
@@ -80,7 +78,7 @@ class FillGraph(Graph):
         self._yes.extend(y)
         self._deltas.extend(delta)
 
-    def draw(self, plotter, to_legend: bool):
+    def draw(self, plotter):
         yes = np.asarray(self._yes)
         deltas = np.asarray(self._deltas)
         plotter.fill_between(
@@ -91,25 +89,36 @@ class FillGraph(Graph):
             facecolor=self._color,
             interpolate=self._interpolate
         )
-        inst = plotter.plot(self._xes, self._yes, self._mode)
-        if not self._legend and to_legend:
-            plotter.legend([inst], [self.get_name()])
-            self._legend = True
+        plotter.plot(self._xes, self._yes, self._mode)
 
 
 class Axes:
-    def __init__(self, plotter, name: str = None):
+    def __init__(self, plotter, label: str = None, x_label: str = None, y_label: str = None):
         self._graphs = []
         self._plotter = plotter
-        self._title = name
+        self._label = label
+        self._x_label = x_label
+        self._y_label = y_label
         self._x_lim = None
         self._y_lim = None
-        if self._title is not None:
-            self._plotter.title(self._title)
+        if self._label is not None:
+            self._plotter.set_label(self._label)
+        if self._x_label is not None:
+            self._plotter.set_xlabel(self._x_label)
+        if self._y_label is not None:
+            self._plotter.set_ylabel(self._y_label)
 
-    def set_title(self, title: str):
-        self._title = title
-        self._plotter.title(self._title)
+    def set_label(self, label: str):
+        self._label = label
+        self._plotter.set_title(self._label)
+
+    def set_x_label(self, x_label: str):
+        self._x_label = x_label
+        self._plotter.set_xlabel(self._x_label)
+
+    def set_y_label(self, y_label: str):
+        self._y_label = y_label
+        self._plotter.set_ylabel(self._y_label)
 
     def set_x_lim(self, x_lim: (float, float)):
         self._plotter.set_xlim(*x_lim)
@@ -122,16 +131,14 @@ class Axes:
     def get_graph(self, i_graph: int):
         return self._graphs[i_graph]
 
-    def append_graph(self, graph: Graph, to_legend: bool = False):
-        self._graphs.append((graph, to_legend))
+    def append_graph(self, graph: Graph):
+        self._graphs.append(graph)
 
     def append(self, i_graph: int, *args, **kwargs):
         graph = self.get_graph(i_graph)
         graph.append(*args, **kwargs)
 
     def draw(self):
-        for graph, to_legend in self._graphs:
-            graph.draw(self._plotter, to_legend)
         lim = self._plotter.viewLim
         if self._x_lim is not None:
             x_lim = (lim.x0, lim.x1)
@@ -143,6 +150,14 @@ class Axes:
             y0 = min(*y_lim, *self._y_lim)
             y1 = max(*y_lim, *self._y_lim)
             self.set_y_lim((y0, y1))
+        if self._label:
+            self.set_label(self._label)
+        if self._x_label:
+            self.set_x_label(self._x_label)
+        if self._y_label:
+            self.set_y_label(self._y_label)
+        for graph in self._graphs:
+            graph.draw(self._plotter)
 
     def clear(self):
         self._plotter.clear()
@@ -151,13 +166,21 @@ class Axes:
 class Figure:
     _ion = False
 
-    def __init__(self, number: int = None):
-        self._figure = pl.figure(number)
+    def __init__(self, title: Union[int, str] = None):
+        self._figure = pl.figure(title)
         self._axes = {}
 
-    def set_title(self, x: int, y: int, idx: int, title: str):
+    def set_label(self, x: int, y: int, idx: int, label: str):
         hash_code = Figure.hash(x, y, idx)
-        self._axes[hash_code].set_title(title)
+        self._axes[hash_code].set_label(label)
+
+    def set_x_label(self, x: int, y: int, idx: int, x_label: str):
+        hash_code = Figure.hash(x, y, idx)
+        self._axes[hash_code].set_x_label(x_label)
+
+    def set_y_label(self, x: int, y: int, idx: int, y_label: str):
+        hash_code = Figure.hash(x, y, idx)
+        self._axes[hash_code].set_y_label(y_label)
 
     def set_x_lim(self, x: int, y: int, idx: int, x_lim: (float, float)):
         self.get_axes(x, y, idx).set_x_lim(x_lim)
