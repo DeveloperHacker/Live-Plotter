@@ -24,5 +24,6 @@ for _x, _y1, _y2, _y3 in zip(x, y1, y2, y3):
     graph3.append(_x, _y2)
     graph4.append(_x, _y3)
     figure.draw()
+    figure.flush()
 figure.show()
 figure.save("graph.png")
