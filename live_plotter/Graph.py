@@ -1,21 +1,14 @@
 from abc import ABCMeta, abstractmethod
+from typing import Iterable, Union
 
 import numpy as np
-from typing import Iterable, Union
+
+from live_plotter.SmoothedValue import SmoothedValue
 
 
 class Graph(metaclass=ABCMeta):
     class NotEqualsLengthsError(ValueError):
         pass
-
-    def __init__(self, name: str = None):
-        self._name = name
-
-    def get_name(self):
-        return self._name
-
-    def set_name(self, name: str):
-        self._name = name
 
     @abstractmethod
     def draw(self, plotter):
@@ -27,8 +20,7 @@ class Graph(metaclass=ABCMeta):
 
 
 class Curve(Graph):
-    def __init__(self, mode: str = None, name: str = None):
-        super().__init__(name)
+    def __init__(self, mode: str = None):
         self._mode = "-or" if mode is None else mode
         self._xes = []
         self._yes = []
@@ -47,16 +39,24 @@ class Curve(Graph):
         plotter.plot(self._xes, self._yes, self._mode)
 
 
-class FillGraph(Graph):
-    def __init__(
-            self,
-            mode: str = None,
-            color: str = "blue",
-            alpha: float = 1.0,
-            interpolate: bool = True,
-            name: str = None
-    ):
-        super().__init__(name)
+class SmoothedCurve(Curve):
+    def __init__(self, smoothing: float, mode: str = None):
+        super().__init__(mode)
+        self._value = SmoothedValue(smoothing)
+
+    def append(self, x: {float, Iterable[float]}, y: {float, Iterable[float]}):
+        if not isinstance(y, Iterable):
+            y = (y,)
+        y = [self._value(yi) for yi in y]
+        super().append(x, y)
+
+
+class DistributedCurve(Graph):
+    def __init__(self,
+                 mode: str = None,
+                 color: str = "blue",
+                 alpha: float = 1.0,
+                 interpolate: bool = True):
         self._color = color
         self._alpha = alpha
         self._interpolate = interpolate
@@ -65,10 +65,9 @@ class FillGraph(Graph):
         self._deltas = []
         self._mode = "-or" if mode is None else mode
 
-    def append(
-            self, x: Union[float, Iterable[float]], y: Union[float, Iterable[float]],
-            delta: Union[float, Iterable[float]]
-    ):
+    def append(self,
+               x: Union[float, Iterable[float]], y: Union[float, Iterable[float]],
+               delta: Union[float, Iterable[float]]):
         if not isinstance(x, Iterable):
             x = (x,)
         if not isinstance(y, Iterable):

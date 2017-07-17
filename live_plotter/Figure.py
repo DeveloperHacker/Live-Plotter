@@ -1,8 +1,9 @@
-import matplotlib.pyplot as pl
 from typing import Union
 
+import matplotlib.pyplot as pl
+
 from live_plotter.Axes import Axes
-from live_plotter.Graph import Graph, Curve, FillGraph
+from live_plotter.Graph import Graph, Curve, DistributedCurve, SmoothedCurve
 
 
 class Figure:
@@ -12,46 +13,47 @@ class Figure:
         self._figure = pl.figure(title)
         self._axes = {}
 
-    def set_label(self, x: int, y: int, idx: int, label: str):
-        hash_code = Figure.hash(x, y, idx)
+    def set_label(self, width: int, height: int, idx: int, label: str):
+        hash_code = Figure.hash(width, height, idx)
         self._axes[hash_code].set_label(label)
 
-    def set_x_label(self, x: int, y: int, idx: int, x_label: str):
-        hash_code = Figure.hash(x, y, idx)
+    def set_x_label(self, width: int, height: int, idx: int, x_label: str):
+        hash_code = Figure.hash(width, height, idx)
         self._axes[hash_code].set_x_label(x_label)
 
-    def set_y_label(self, x: int, y: int, idx: int, y_label: str):
-        hash_code = Figure.hash(x, y, idx)
+    def set_y_label(self, width: int, height: int, idx: int, y_label: str):
+        hash_code = Figure.hash(width, height, idx)
         self._axes[hash_code].set_y_label(y_label)
 
-    def set_x_lim(self, x: int, y: int, idx: int, x_lim: (float, float)):
-        self.get_axes(x, y, idx).set_x_lim(x_lim)
+    def set_x_lim(self, width: int, height: int, idx: int, x_lim: (float, float)):
+        self.get_axes(width, height, idx).set_x_lim(x_lim)
 
-    def set_y_lim(self, x: int, y: int, idx: int, y_lim: (float, float)):
-        self.get_axes(x, y, idx).set_y_lim(y_lim)
+    def set_y_lim(self, width: int, height: int, idx: int, y_lim: (float, float)):
+        self.get_axes(width, height, idx).set_y_lim(y_lim)
 
-    def get_subplot(self, x: int, y: int, idx: int):
-        return self._figure.add_subplot(x, y, idx)
+    def get_subplot(self, width: int, height: int, idx: int):
+        return self._figure.add_subplot(width, height, idx)
 
-    def axes(self, x: int, y: int, idx: int, label: str = None, x_label: str = None, y_label: str = None) -> Axes:
-        subplot = self.get_subplot(x, y, idx)
+    def axes(self, width: int, height: int, idx: int, label: str = None, x_label: str = None,
+             y_label: str = None) -> Axes:
+        subplot = self.get_subplot(width, height, idx)
         axes = Axes(subplot, label, x_label, y_label)
-        self.append_axes(x, y, idx, axes)
+        self.append_axes(width, height, idx, axes)
         return axes
 
-    def get_axes(self, x: int, y: int, idx: int) -> Axes:
-        hash_code = Figure.hash(x, y, idx)
+    def get_axes(self, width: int, height: int, idx: int) -> Axes:
+        hash_code = Figure.hash(width, height, idx)
         if hash_code not in self._axes:
-            subplot = self.get_subplot(x, y, idx)
+            subplot = self.get_subplot(width, height, idx)
             self._axes[hash_code] = Axes(subplot)
         return self._axes[hash_code]
 
-    def append_axes(self, x: int, y: int, idx: int, axes: Axes):
-        hash_code = Figure.hash(x, y, idx)
+    def append_axes(self, width: int, height: int, idx: int, axes: Axes):
+        hash_code = Figure.hash(width, height, idx)
         self._axes[hash_code] = axes
 
-    def append(self, x: int, y: int, idx: int, i_graph: int, *args, **kwargs):
-        axes = self.get_axes(x, y, idx)
+    def append(self, width: int, height: int, idx: int, i_graph: int, *args, **kwargs):
+        axes = self.get_axes(width, height, idx)
         axes.append(i_graph, *args, **kwargs)
 
     def draw(self):
@@ -62,25 +64,33 @@ class Figure:
     def flush(self):
         self._figure.canvas.flush_events()
 
-    def curve(self, x: int, y: int, idx: int, mode: str = None, name: str = None) -> Curve:
+    def curve(self, width: int, height: int, idx: int, mode: str = None, name: str = None) -> Curve:
         graph = Curve(mode, name)
-        self.append_graph(x, y, idx, graph)
+        self.append_graph(width, height, idx, graph)
         return graph
 
-    def fill_graph(
-            self, x: int, y: int, idx: int,
-            mode: str = None,
-            color: str = "blue",
-            alpha: float = 1.0,
-            interpolate: bool = True,
-            name: str = None
-    ) -> FillGraph:
-        graph = FillGraph(mode, color, alpha, interpolate, name)
-        self.append_graph(x, y, idx, graph)
+    def smoothed_curve(self,
+                       width: int, height: int, idx: int,
+                       smoothing: float,
+                       mode: str = None,
+                       name: str = None) -> SmoothedCurve:
+        graph = SmoothedCurve(smoothing, mode, name)
+        self.append_graph(width, height, idx, graph)
         return graph
 
-    def append_graph(self, x: int, y: int, idx: int, graph: Graph):
-        axes = self.get_axes(x, y, idx)
+    def distributed_curve(self,
+                          width: int, height: int, idx: int,
+                          mode: str = None,
+                          color: str = "blue",
+                          alpha: float = 1.0,
+                          interpolate: bool = True,
+                          name: str = None) -> DistributedCurve:
+        graph = DistributedCurve(mode, color, alpha, interpolate, name)
+        self.append_graph(width, height, idx, graph)
+        return graph
+
+    def append_graph(self, width: int, height: int, idx: int, graph: Graph):
+        axes = self.get_axes(width, height, idx)
         axes.append_graph(graph)
 
     def save(self, save_path: str):
@@ -92,8 +102,8 @@ class Figure:
             Figure.ion()
 
     @staticmethod
-    def hash(x: int, y: int, idx: int) -> str:
-        return "_".join((str(x), str(y), str(idx)))
+    def hash(width: int, height: int, idx: int) -> str:
+        return "_".join((str(width), str(height), str(idx)))
 
     @staticmethod
     def ion():
