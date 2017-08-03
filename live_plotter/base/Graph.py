@@ -3,7 +3,7 @@ from typing import Iterable, Union
 
 import numpy as np
 
-from live_plotter.SmoothedValue import SmoothedValue
+from live_plotter.base.SmoothedValue import SmoothedValue
 
 
 class Graph(metaclass=ABCMeta):
@@ -16,6 +16,9 @@ class Graph(metaclass=ABCMeta):
 
     @abstractmethod
     def append(self, *args, **kwargs):
+        pass
+
+    def destroy(self):
         pass
 
 

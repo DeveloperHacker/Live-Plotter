@@ -1,4 +1,4 @@
-from live_plotter.Graph import Graph
+from live_plotter.base.Graph import Graph
 
 
 class Axes:
@@ -70,3 +70,6 @@ class Axes:
 
     def clear(self):
         self._plotter.clear()
+
+    def destroy(self):
+        self.draw()

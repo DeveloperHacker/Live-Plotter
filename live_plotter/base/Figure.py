@@ -2,14 +2,16 @@ from typing import Union
 
 import matplotlib.pyplot as pl
 
-from live_plotter.Axes import Axes
-from live_plotter.Graph import Graph, Curve, DistributedCurve, SmoothedCurve
+from live_plotter.base.Axes import Axes
+from live_plotter.base.Graph import Graph, Curve, DistributedCurve, SmoothedCurve
 
 
 class Figure:
     _ion = False
 
-    def __init__(self, title: Union[int, str] = None):
+    def __init__(self, title: Union[int, str] = None, save_path: str = None):
+        self._title = title
+        self._save_path = save_path
         self._figure = pl.figure(title)
         self._axes = {}
 
@@ -60,21 +62,21 @@ class Figure:
         for axes in self._axes.values():
             axes.clear()
             axes.draw()
+        self.flush()
 
     def flush(self):
         self._figure.canvas.flush_events()
 
-    def curve(self, width: int, height: int, idx: int, mode: str = None, name: str = None) -> Curve:
-        graph = Curve(mode, name)
+    def curve(self, width: int, height: int, idx: int, mode: str = None) -> Curve:
+        graph = Curve(mode)
         self.append_graph(width, height, idx, graph)
         return graph
 
     def smoothed_curve(self,
                        width: int, height: int, idx: int,
                        smoothing: float,
-                       mode: str = None,
-                       name: str = None) -> SmoothedCurve:
-        graph = SmoothedCurve(smoothing, mode, name)
+                       mode: str = None) -> SmoothedCurve:
+        graph = SmoothedCurve(smoothing, mode)
         self.append_graph(width, height, idx, graph)
         return graph
 
@@ -83,9 +85,8 @@ class Figure:
                           mode: str = None,
                           color: str = "blue",
                           alpha: float = 1.0,
-                          interpolate: bool = True,
-                          name: str = None) -> DistributedCurve:
-        graph = DistributedCurve(mode, color, alpha, interpolate, name)
+                          interpolate: bool = True) -> DistributedCurve:
+        graph = DistributedCurve(mode, color, alpha, interpolate)
         self.append_graph(width, height, idx, graph)
         return graph
 
@@ -93,13 +94,25 @@ class Figure:
         axes = self.get_axes(width, height, idx)
         axes.append_graph(graph)
 
-    def save(self, save_path: str):
-        ion = Figure._ion
-        if ion:
-            Figure.ioff()
-        self._figure.savefig(save_path)
-        if ion:
-            Figure.ion()
+    def save(self, save_path: str = None):
+        save_path = save_path or self._save_path
+        if save_path is not None:
+            ion = Figure._ion
+            if ion:
+                Figure.ioff()
+            self._figure.savefig(save_path)
+            if ion:
+                Figure.ion()
+
+    def close(self):
+        self.draw()
+        self.save()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
     @staticmethod
     def hash(width: int, height: int, idx: int) -> str:

@@ -1,39 +1,44 @@
 from typing import Union
 
-from live_plotter.Figure import Figure
+from live_plotter.base.Figure import Figure
 from live_plotter.proxy.Proxy import Proxy
 from live_plotter.proxy.ProxyAxes import ProxyAxes
 from live_plotter.proxy.ProxyGraph import ProxyGraph, ProxyDistributedCurve, ProxyCurve, ProxySmoothedCurve
 from live_plotter.proxy.ProxyPlotter import ProxyPlotter
 from live_plotter.proxy.Server import Server
-from live_plotter.proxy.Task import CreateTask, UpdateTask
+from live_plotter.proxy.Task import CreateTask, UpdateTask, DestroyTask
 
 
 class ProxyFigure(Proxy):
     @staticmethod
-    def _create(title: Union[int, str] = None) -> Figure:
-        from live_plotter.Figure import Figure
-        return Figure(title)
+    def _create(title: Union[int, str], save_path: str) -> Figure:
+        from live_plotter.base.Figure import Figure
+        Figure.ion()
+        return Figure(title, save_path)
 
-    def __init__(self, title: Union[int, str] = None):
+    def __init__(self, title: Union[int, str] = None, save_path: str = None):
         super().__init__()
         self._proxies = {}
-        self._server.append(CreateTask(self.id, ProxyFigure._create, title))
+        self._append_task(CreateTask(self.id, ProxyFigure._create, title, save_path))
+        self._title = title
+
+    def get_title(self):
+        return self._title
 
     def set_label(self, width: int, height: int, idx: int, label: str):
-        self._server.append(UpdateTask(self.id, "set_label", width, height, idx, label))
+        self._append_task(UpdateTask(self.id, "set_label", width, height, idx, label))
 
     def set_x_label(self, width: int, height: int, idx: int, x_label: str):
-        self._server.append(UpdateTask(self.id, "set_x_label", width, height, idx, x_label))
+        self._append_task(UpdateTask(self.id, "set_x_label", width, height, idx, x_label))
 
     def set_y_label(self, width: int, height: int, idx: int, y_label: str):
-        self._server.append(UpdateTask(self.id, "set_y_label", width, height, idx, y_label))
+        self._append_task(UpdateTask(self.id, "set_y_label", width, height, idx, y_label))
 
     def set_x_lim(self, width: int, height: int, idx: int, x_lim: (float, float)):
-        self._server.append(UpdateTask(self.id, "set_x_lim", width, height, idx, x_lim))
+        self._append_task(UpdateTask(self.id, "set_x_lim", width, height, idx, x_lim))
 
     def set_y_lim(self, width: int, height: int, idx: int, y_lim: (float, float)):
-        self._server.append(UpdateTask(self.id, "set_y_lim", width, height, idx, y_lim))
+        self._append_task(UpdateTask(self.id, "set_y_lim", width, height, idx, y_lim))
 
     def get_subplot(self, width: int, height: int, idx: int) -> ProxyPlotter:
         hash_code = Figure.hash(width, height, idx)
@@ -47,7 +52,7 @@ class ProxyFigure(Proxy):
         subplot = self.get_subplot(width, height, idx)
         axes = ProxyAxes(subplot, label, x_label, y_label)
         self._proxies[hash_code] = axes
-        self._server.append(UpdateTask(self.id, "append_axes", width, height, idx, axes))
+        self._append_task(UpdateTask(self.id, "append_axes", width, height, idx, axes))
         return axes
 
     def get_axes(self, width: int, height: int, idx: int) -> ProxyAxes:
@@ -57,17 +62,17 @@ class ProxyFigure(Proxy):
         return self._proxies[hash_code]
 
     def append_axes(self, width: int, height: int, idx: int, axes: ProxyAxes):
-        self._server.append(UpdateTask(self.id, "append_axes", width, height, idx, axes.identified))
+        self._append_task(UpdateTask(self.id, "append_axes", width, height, idx, axes.identified))
         self._proxies[Figure.hash(width, height, idx)] = axes
 
     def append(self, width: int, height: int, idx: int, i_graph: int, *args, **kwargs):
-        self._server.append(UpdateTask(self.id, "append", width, height, idx, i_graph, *args, **kwargs))
+        self._append_task(UpdateTask(self.id, "append", width, height, idx, i_graph, *args, **kwargs))
 
     def draw(self):
-        self._server.append(UpdateTask(self.id, "draw"))
+        self._append_task(UpdateTask(self.id, "draw"))
 
     def flush(self):
-        self._server.append(UpdateTask(self.id, "flush"))
+        self._append_task(UpdateTask(self.id, "flush"))
 
     def curve(self, width: int, height: int, idx: int, mode: str = None) -> ProxyCurve:
         curve = ProxyCurve(mode)
@@ -93,13 +98,24 @@ class ProxyFigure(Proxy):
         return curve
 
     def append_graph(self, width: int, height: int, idx: int, graph: ProxyGraph):
-        self._server.append(UpdateTask(self.id, "append_graph", width, height, idx, graph.identified))
+        self._append_task(UpdateTask(self.id, "append_graph", width, height, idx, graph.identified))
         self._proxies[graph.id] = graph
 
-    def save(self, save_path: str):
-        self._server.append(UpdateTask(self.id, "save", save_path))
+    def save(self, save_path: str = None):
+        self._append_task(UpdateTask(self.id, "save", save_path))
+
+    def close(self):
+        self._append_task(UpdateTask(self.id, "close"))
+        self._append_task(DestroyTask(self.id))
+        for proxy in self._proxies.values():
+            self._append_task(DestroyTask(proxy.id))
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
     @staticmethod
     def destroy():
-        server = Server()
-        server.stop()
+        Server().stop()

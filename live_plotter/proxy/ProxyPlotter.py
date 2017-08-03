@@ -1,4 +1,4 @@
-from live_plotter.Figure import Figure
+from live_plotter.base.Figure import Figure
 
 from live_plotter.proxy.Proxy import Proxy
 from live_plotter.proxy.Task import CreateTask
@@ -11,4 +11,4 @@ class ProxyPlotter(Proxy):
 
     def __init__(self, x: int, y: int, idx: int, figure: 'ProxyFigure'):
         super().__init__()
-        self._server.append(CreateTask(self.id, ProxyPlotter._create, x, y, idx, figure.identified))
+        self._append_task(CreateTask(self.id, ProxyPlotter._create, x, y, idx, figure.identified))
