@@ -5,7 +5,6 @@ from live_plotter.proxy.Proxy import Proxy
 from live_plotter.proxy.ProxyAxes import ProxyAxes
 from live_plotter.proxy.ProxyGraph import ProxyGraph, ProxyDistributedCurve, ProxyCurve, ProxySmoothedCurve
 from live_plotter.proxy.ProxyPlotter import ProxyPlotter
-from live_plotter.proxy.Server import Server
 from live_plotter.proxy.Task import CreateTask, UpdateTask, DestroyTask
 
 
@@ -115,7 +114,3 @@ class ProxyFigure(Proxy):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-
-    @staticmethod
-    def destroy():
-        Server().stop()
