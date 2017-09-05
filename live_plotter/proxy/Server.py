@@ -36,7 +36,6 @@ class Server:
                 self._process.start()
 
     def __stop(self):
-        print("stop")
         self._stop_requests.value = True
 
     def _run(self):
